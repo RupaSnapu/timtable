@@ -1,0 +1,900 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--  <meta charset="UTF-8">-->
+<!--  <title>Dynamic Timetable Allocation</title>-->
+<!--  <style>-->
+<!--  body {-->
+<!--    font-family: Arial, sans-serif;-->
+<!--    margin: 20px;-->
+<!--    background-color: #f9f9f9;-->
+<!--  }-->
+
+<!--  h2, h3 {-->
+<!--    color: #333;-->
+<!--  }-->
+
+<!--  input, select, button {-->
+<!--    padding: 8px;-->
+<!--    margin: 5px;-->
+<!--    border-radius: 4px;-->
+<!--    border: 1px solid #ccc;-->
+<!--    font-size: 14px;-->
+<!--  }-->
+
+<!--  button {-->
+<!--    background-color: #4CAF50;-->
+<!--    color: white;-->
+<!--    border: none;-->
+<!--    cursor: pointer;-->
+<!--  }-->
+
+<!--  button:hover {-->
+<!--    background-color: #45a049;-->
+<!--  }-->
+
+<!--  table {-->
+<!--    width: 100%;-->
+<!--    margin-top: 15px;-->
+<!--    border-collapse: collapse;-->
+<!--    background-color: #fff;-->
+<!--  }-->
+
+<!--  th, td {-->
+<!--    border: 1px solid #ddd;-->
+<!--    text-align: center;-->
+<!--    padding: 10px;-->
+<!--  }-->
+
+<!--  th {-->
+<!--    background-color: #f2f2f2;-->
+<!--  }-->
+
+<!--  ul {-->
+<!--    padding-left: 20px;-->
+<!--  }-->
+
+<!--  li {-->
+<!--    margin: 3px 0;-->
+<!--    font-size: 14px;-->
+<!--  }-->
+
+<!--  label {-->
+<!--    font-weight: bold;-->
+<!--    margin-left: 10px;-->
+<!--  }-->
+
+<!--  select {-->
+<!--    width: auto;-->
+<!--  }-->
+
+<!--  @media (max-width: 768px) {-->
+<!--    input, select, button {-->
+<!--      width: 100%;-->
+<!--      margin: 5px 0;-->
+<!--    }-->
+
+<!--    table, th, td {-->
+<!--      font-size: 12px;-->
+<!--    }-->
+
+<!--    label {-->
+<!--      display: block;-->
+<!--      margin-top: 10px;-->
+<!--    }-->
+<!--  }-->
+
+<!--  </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--  <h2>Enter Staff Details</h2>-->
+<!--  <input type="text" id="staff_name" placeholder="Staff Name">-->
+<!--  <input type="text" id="staff_id" placeholder="Staff ID">-->
+<!--  <input type="text" id="subject_name" placeholder="Subject Name">-->
+<!--  <input type="text" id="subject_code" placeholder="Subject Code">-->
+<!--  <button onclick="addStaff()">Add Staff</button>-->
+
+<!--  <h3>Added Staff</h3>-->
+<!--  <ul id="staffList"></ul>-->
+<!--  <button onclick="generateTimetable()">Generate Timetable</button>-->
+
+<!--  <h3>Filters</h3>-->
+<!--  <label>Section:</label>-->
+<!--  <select id="filterSection" onchange="renderTable()">-->
+<!--    <option value="All">All</option>-->
+<!--    <option>A</option>-->
+<!--    <option>B</option>-->
+<!--    <option>C</option>-->
+<!--  </select>-->
+<!--  <label>Staff:</label>-->
+<!--  <select id="filterStaff" onchange="renderTable()">-->
+<!--    <option value="All">All</option>-->
+<!--  </select>-->
+<!--  <label>Period:</label>-->
+<!--  <select id="filterPeriod" onchange="renderTable()">-->
+<!--    <option value="All">All</option>-->
+<!--    <script>for (let i=1; i<=8; i++) document.write(`<option>${i}</option>`);</script>-->
+<!--  </select>-->
+<!--  <label>Day:</label>-->
+<!--  <select id="filterDay" onchange="renderTable()">-->
+<!--    <option value="All">All</option>-->
+<!--    <option>Monday</option><option>Tuesday</option><option>Wednesday</option>-->
+<!--    <option>Thursday</option><option>Friday</option>-->
+<!--  </select>-->
+
+<!--  <h3>Generated Timetable</h3>-->
+<!--  <table id="timetable">-->
+<!--    <thead>-->
+<!--      <tr>-->
+<!--        <th>Staff Name</th><th>Staff ID</th><th>Subject</th><th>Code</th>-->
+<!--        <th>Day</th><th>Section</th><th>Period</th>-->
+<!--      </tr>-->
+<!--    </thead>-->
+<!--    <tbody></tbody>-->
+<!--  </table>-->
+
+<!--  <script>-->
+<!--    const staffList = [];-->
+<!--    const sections = ['A', 'B', 'C'];-->
+<!--    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];-->
+<!--    const periodsPerDay = 8;-->
+<!--    let timetable = [];-->
+<!--    const dp = {};-->
+
+<!--    function addStaff() {-->
+<!--      const name = document.getElementById('staff_name').value;-->
+<!--      const id = document.getElementById('staff_id').value;-->
+<!--      const subject = document.getElementById('subject_name').value;-->
+<!--      const code = document.getElementById('subject_code').value;-->
+<!--      if (!name || !id || !subject || !code) return alert('Fill all fields');-->
+<!--      staffList.push({ name, id, subject, code });-->
+<!--      document.getElementById('staffList').innerHTML += `<li>${name} (${id}) - ${subject} (${code})</li>`;-->
+<!--      document.getElementById('filterStaff').innerHTML += `<option value="${name}">${name}</option>`;-->
+<!--      document.getElementById('staff_name').value = '';-->
+<!--      document.getElementById('staff_id').value = '';-->
+<!--      document.getElementById('subject_name').value = '';-->
+<!--      document.getElementById('subject_code').value = '';-->
+<!--    }-->
+
+<!--    function generateTimetable() {-->
+<!--      timetable = [];-->
+<!--      staffList.forEach(s => {-->
+<!--        dp[s.name] = {};-->
+<!--        for (let d of days) {-->
+<!--          dp[s.name][d] = {};-->
+<!--          for (let p = 1; p <= periodsPerDay; p++) {-->
+<!--            dp[s.name][d][p] = false;-->
+<!--          }-->
+<!--        }-->
+<!--      });-->
+
+<!--      let staffIndex = 0;-->
+<!--      for (let d of days) {-->
+<!--        for (let p = 1; p <= periodsPerDay; p++) {-->
+<!--          for (let sec of sections) {-->
+<!--            let attempts = 0;-->
+<!--            while (attempts < staffList.length) {-->
+<!--              let staff = staffList[staffIndex % staffList.length];-->
+<!--              if (!dp[staff.name][d][p]) {-->
+<!--                dp[staff.name][d][p] = true;-->
+<!--                timetable.push({-->
+<!--                  staff_name: staff.name,-->
+<!--                  staff_id: staff.id,-->
+<!--                  subject: staff.subject,-->
+<!--                  code: staff.code,-->
+<!--                  day: d,-->
+<!--                  section: sec,-->
+<!--                  period: p-->
+<!--                });-->
+<!--                staffIndex++;-->
+<!--                break;-->
+<!--              }-->
+<!--              staffIndex++;-->
+<!--              attempts++;-->
+<!--            }-->
+<!--          }-->
+<!--        }-->
+<!--      }-->
+<!--      renderTable();-->
+<!--    }-->
+
+<!--    function renderTable() {-->
+<!--      const fs = document.getElementById('filterSection').value;-->
+<!--      const fst = document.getElementById('filterStaff').value;-->
+<!--      const fp = document.getElementById('filterPeriod').value;-->
+<!--      const fd = document.getElementById('filterDay').value;-->
+
+<!--      const tbody = document.getElementById('timetable').getElementsByTagName('tbody')[0];-->
+<!--      tbody.innerHTML = '';-->
+<!--      for (let row of timetable) {-->
+<!--        if ((fs === 'All' || row.section === fs) &&-->
+<!--            (fst === 'All' || row.staff_name === fst) &&-->
+<!--            (fp === 'All' || row.period == fp) &&-->
+<!--            (fd === 'All' || row.day === fd)) {-->
+<!--          let tr = document.createElement('tr');-->
+<!--          tr.innerHTML = `-->
+<!--            <td>${row.staff_name}</td><td>${row.staff_id}</td>-->
+<!--            <td>${row.subject}</td><td>${row.code}</td>-->
+<!--            <td>${row.day}</td><td>${row.section}</td><td>${row.period}</td>`;-->
+<!--          tbody.appendChild(tr);-->
+<!--        }-->
+<!--      }-->
+<!--    }-->
+<!--  </script>-->
+<!--</body>-->
+<!--</html>-->
+
+
+
+
+
+
+
+
+
+
+<!--&lt;!&ndash;-&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;&#45;  it was good  &ndash;&gt;-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Timetable Allocation</title>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <style>
+    /* Background Particle Canvas */
+    #particles-js {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      top: 0;
+      left: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 40px 20px;
+      background: #0f2027;
+      background: linear-gradient(to right, #2c5364, #203a43, #0f2027);
+      color: #fff;
+      overflow-x: hidden;
+    }
+select {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff; /* Ensure text is white */
+  min-width: 150px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Add border for visibility */
+  padding: 10px;
+  box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.2); /* Slight inner shadow for better contrast */
+}
+
+select option {
+  background-color: #333; /* Darker background for options */
+  color: #fff; /* White text color for options */
+}
+
+select:focus {
+  background-color: rgba(255, 255, 255, 0.2); /* Slightly lighter background on focus */
+  outline: none;
+}
+
+    h2, h3 {
+      text-align: center;
+      margin: 10px 0 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 30px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    input, select, button {
+      padding: 10px;
+      margin: 10px 5px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      outline: none;
+      box-shadow: inset 0 0 4px rgba(255,255,255,0.2);
+    }
+
+    input, select {
+      background-color: rgba(255,255,255,0.1);
+      color: #fff;
+      min-width: 150px;
+    }
+
+    button {
+      background-color: #ff6f61;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #ff3c2e;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      padding: 12px;
+      color: #fff;
+    }
+
+    th {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    #staffList {
+      list-style: none;
+      padding: 0;
+    }
+
+    #staffList li {
+      padding: 5px 0;
+    }
+
+    label {
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    @media (max-width: 768px) {
+      input, select, button {
+        width: 100%;
+        margin: 8px 0;
+      }
+
+      table, th, td {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="particles-js"></div>
+
+<div class="container">
+  <h2>Enter Staff Details</h2>
+  <div style="text-align: center;">
+    <input type="text" id="staff_name" placeholder="Staff Name">
+    <input type="text" id="staff_id" placeholder="Staff ID">
+    <input type="text" id="subject_name" placeholder="Subject Name">
+    <input type="text" id="subject_code" placeholder="Subject Code">
+    <button onclick="addStaff()">Add Staff</button>
+  </div>
+
+  <h3>Added Staff</h3>
+  <ul id="staffList"></ul>
+  <div style="text-align: center;">
+    <button onclick="generateTimetable()">Generate Timetable</button>
+  </div>
+
+  <h3>Filters</h3>
+  <div style="text-align: center;">
+    <label>Section:</label>
+    <select id="filterSection" onchange="renderTable()">
+      <option value="All">All</option>
+      <option>A</option>
+      <option>B</option>
+      <option>C</option>
+    </select>
+
+    <label>Staff:</label>
+    <select id="filterStaff" onchange="renderTable()">
+      <option value="All">All</option>
+    </select>
+
+    <label>Period:</label>
+    <select id="filterPeriod" onchange="renderTable()">
+      <option value="All">All</option>
+      <script>for (let i = 1; i <= 8; i++) document.write(`<option>${i}</option>`);</script>
+    </select>
+
+    <label>Day:</label>
+    <select id="filterDay" onchange="renderTable()">
+      <option value="All">All</option>
+      <option>Monday</option>
+      <option>Tuesday</option>
+      <option>Wednesday</option>
+      <option>Thursday</option>
+      <option>Friday</option>
+    </select>
+  </div>
+
+  <h3>Generated Timetable</h3>
+  <table id="timetable">
+    <thead>
+      <tr>
+        <th>Staff Name</th>
+        <th>Staff ID</th>
+        <th>Subject</th>
+        <th>Code</th>
+        <th>Day</th>
+        <th>Section</th>
+        <th>Period</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  const staffList = [];
+  const sections = ['A', 'B', 'C'];
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const periodsPerDay = 8;
+  let timetable = [];
+  const dp = {};
+
+  function addStaff() {
+    const name = document.getElementById('staff_name').value;
+    const id = document.getElementById('staff_id').value;
+    const subject = document.getElementById('subject_name').value;
+    const code = document.getElementById('subject_code').value;
+    if (!name || !id || !subject || !code) return alert('Fill all fields');
+
+    staffList.push({ name, id, subject, code });
+    document.getElementById('staffList').innerHTML += `<li>${name} (${id}) - ${subject} (${code})</li>`;
+    document.getElementById('filterStaff').innerHTML += `<option value="${name}">${name}</option>`;
+    document.getElementById('staff_name').value = '';
+    document.getElementById('staff_id').value = '';
+    document.getElementById('subject_name').value = '';
+    document.getElementById('subject_code').value = '';
+  }
+
+  function generateTimetable() {
+    timetable = [];
+    staffList.forEach(s => {
+      dp[s.name] = {};
+      for (let d of days) {
+        dp[s.name][d] = {};
+        for (let p = 1; p <= periodsPerDay; p++) {
+          dp[s.name][d][p] = false;
+        }
+      }
+    });
+
+    let staffIndex = 0;
+    for (let d of days) {
+      for (let p = 1; p <= periodsPerDay; p++) {
+        for (let sec of sections) {
+          let attempts = 0;
+          while (attempts < staffList.length) {
+            let staff = staffList[staffIndex % staffList.length];
+            if (!dp[staff.name][d][p]) {
+              dp[staff.name][d][p] = true;
+              timetable.push({
+                staff_name: staff.name,
+                staff_id: staff.id,
+                subject: staff.subject,
+                code: staff.code,
+                day: d,
+                section: sec,
+                period: p
+              });
+              staffIndex++;
+              break;
+            }
+            staffIndex++;
+            attempts++;
+          }
+        }
+      }
+    }
+    renderTable();
+  }
+
+  function renderTable() {
+    const fs = document.getElementById('filterSection').value;
+    const fst = document.getElementById('filterStaff').value;
+    const fp = document.getElementById('filterPeriod').value;
+    const fd = document.getElementById('filterDay').value;
+
+    const tbody = document.getElementById('timetable').getElementsByTagName('tbody')[0];
+    tbody.innerHTML = '';
+    for (let row of timetable) {
+      if ((fs === 'All' || row.section === fs) &&
+          (fst === 'All' || row.staff_name === fst) &&
+          (fp === 'All' || row.period == fp) &&
+          (fd === 'All' || row.day === fd)) {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.staff_name}</td>
+          <td>${row.staff_id}</td>
+          <td>${row.subject}</td>
+          <td>${row.code}</td>
+          <td>${row.day}</td>
+          <td>${row.section}</td>
+          <td>${row.period}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+  }
+
+  /* Load particles.js */
+  particlesJS("particles-js", {
+    particles: {
+      number: { value: 80 },
+      size: { value: 3 },
+      color: { value: "#ffffff" },
+      line_linked: {
+        enable: true,
+        distance: 150,
+        color: "#ffffff",
+        opacity: 0.4,
+        width: 1
+      },
+      move: {
+        enable: true,
+        speed: 3
+      }
+    }
+  });
+</script>
+</body>
+</html>
+
+
+<!--&lt;!&ndash;             waiting for one more                  &ndash;&gt;-->
+
+
+
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--  <meta charset="UTF-8">-->
+<!--  <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--  <title>Dynamic Timetable Allocation</title>-->
+<!--  <style>-->
+<!--    /* Global styles */-->
+<!--    body {-->
+<!--      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;-->
+<!--      background: #2d2d2d;-->
+<!--      color: #fff;-->
+<!--      margin: 0;-->
+<!--      padding: 0;-->
+<!--      display: flex;-->
+<!--      justify-content: center;-->
+<!--      align-items: center;-->
+<!--      min-height: 100vh;-->
+<!--      overflow: hidden;-->
+<!--    }-->
+
+<!--    .container {-->
+<!--      max-width: 1200px;-->
+<!--      width: 100%;-->
+<!--      background: #3a3a3a;-->
+<!--      border-radius: 12px;-->
+<!--      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);-->
+<!--      padding: 30px;-->
+<!--      box-sizing: border-box;-->
+<!--    }-->
+
+<!--    h2, h3 {-->
+<!--      text-align: center;-->
+<!--      color: #4e8eff;-->
+<!--      font-weight: 500;-->
+<!--    }-->
+
+<!--    .input-group {-->
+<!--      display: flex;-->
+<!--      gap: 20px;-->
+<!--      flex-wrap: wrap;-->
+<!--      justify-content: space-between;-->
+<!--    }-->
+
+<!--    .input-group input,-->
+<!--    .input-group select,-->
+<!--    .input-group button {-->
+<!--      padding: 12px;-->
+<!--      margin: 10px 0;-->
+<!--      border-radius: 12px;-->
+<!--      border: none;-->
+<!--      font-size: 16px;-->
+<!--      background-color: #4e8eff;-->
+<!--      color: #fff;-->
+<!--      outline: none;-->
+<!--      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);-->
+<!--      transition: all 0.3s ease-in-out;-->
+<!--    }-->
+
+<!--    .input-group button {-->
+<!--      background-color: #1e66a8;-->
+<!--      cursor: pointer;-->
+<!--    }-->
+
+<!--    .input-group button:hover {-->
+<!--      background-color: #1a58a1;-->
+<!--      transform: scale(1.05);-->
+<!--    }-->
+
+<!--    /* Neumorphism effect for inputs */-->
+<!--    .input-group input,-->
+<!--    .input-group select {-->
+<!--      background: #4a4a4a;-->
+<!--      box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.3), -6px -6px 12px rgba(255, 255, 255, 0.2);-->
+<!--    }-->
+
+<!--    .input-group input:focus,-->
+<!--    .input-group select:focus {-->
+<!--      box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.3), -6px -6px 12px rgba(255, 255, 255, 0.3);-->
+<!--    }-->
+
+<!--    .input-group button:focus {-->
+<!--      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);-->
+<!--    }-->
+
+<!--    /* Staff List Styling */-->
+<!--    #staffList {-->
+<!--      list-style: none;-->
+<!--      padding: 0;-->
+<!--      text-align: center;-->
+<!--      margin-top: 20px;-->
+<!--      margin-bottom: 20px;-->
+<!--    }-->
+
+<!--    #staffList li {-->
+<!--      font-size: 16px;-->
+<!--      margin: 8px 0;-->
+<!--      background: #2b2b2b;-->
+<!--      padding: 8px;-->
+<!--      border-radius: 8px;-->
+<!--      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);-->
+<!--    }-->
+
+<!--    /* Filter Section */-->
+<!--    .filters {-->
+<!--      display: flex;-->
+<!--      gap: 15px;-->
+<!--      justify-content: center;-->
+<!--      flex-wrap: wrap;-->
+<!--    }-->
+
+<!--    .filters select {-->
+<!--      background-color: #4a4a4a;-->
+<!--      padding: 12px;-->
+<!--      color: #fff;-->
+<!--      border-radius: 12px;-->
+<!--      box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.3), -6px -6px 12px rgba(255, 255, 255, 0.2);-->
+<!--      border: none;-->
+<!--      outline: none;-->
+<!--    }-->
+
+<!--    /* Timetable Table */-->
+<!--    table {-->
+<!--      width: 100%;-->
+<!--      margin-top: 30px;-->
+<!--      border-collapse: collapse;-->
+<!--    }-->
+
+<!--    th, td {-->
+<!--      border: 1px solid #444;-->
+<!--      padding: 12px;-->
+<!--      text-align: center;-->
+<!--      font-size: 16px;-->
+<!--    }-->
+
+<!--    th {-->
+<!--      background-color: #2d2d2d;-->
+<!--      color: #4e8eff;-->
+<!--    }-->
+
+<!--    tbody tr {-->
+<!--      background: #383838;-->
+<!--    }-->
+
+<!--    tbody tr:hover {-->
+<!--      background: #444;-->
+<!--      cursor: pointer;-->
+<!--    }-->
+
+<!--    tbody td {-->
+<!--      color: #fff;-->
+<!--    }-->
+
+<!--    /* Mobile Responsiveness */-->
+<!--    @media (max-width: 768px) {-->
+<!--      .input-group {-->
+<!--        flex-direction: column;-->
+<!--      }-->
+
+<!--      .filters {-->
+<!--        flex-direction: column;-->
+<!--      }-->
+<!--    }-->
+<!--  </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--  <div class="container">-->
+<!--    <h2>Enter Staff Details</h2>-->
+<!--    <div class="input-group">-->
+<!--      <input type="text" id="staff_name" placeholder="Staff Name">-->
+<!--      <input type="text" id="staff_id" placeholder="Staff ID">-->
+<!--      <input type="text" id="subject_name" placeholder="Subject Name">-->
+<!--      <input type="text" id="subject_code" placeholder="Subject Code">-->
+<!--      <button onclick="addStaff()">Add Staff</button>-->
+<!--    </div>-->
+
+<!--    <h3>Added Staff</h3>-->
+<!--    <ul id="staffList"></ul>-->
+<!--    <button onclick="generateTimetable()">Generate Timetable</button>-->
+
+<!--    <h3>Filters</h3>-->
+<!--    <div class="filters">-->
+<!--      <label>Section:</label>-->
+<!--      <select id="filterSection" onchange="renderTable()">-->
+<!--        <option value="All">All</option>-->
+<!--        <option>A</option>-->
+<!--        <option>B</option>-->
+<!--        <option>C</option>-->
+<!--      </select>-->
+
+<!--      <label>Staff:</label>-->
+<!--      <select id="filterStaff" onchange="renderTable()">-->
+<!--        <option value="All">All</option>-->
+<!--      </select>-->
+
+<!--      <label>Period:</label>-->
+<!--      <select id="filterPeriod" onchange="renderTable()">-->
+<!--        <option value="All">All</option>-->
+<!--        <script>for (let i = 1; i <= 8; i++) document.write(`<option>${i}</option>`);</script>-->
+<!--      </select>-->
+
+<!--      <label>Day:</label>-->
+<!--      <select id="filterDay" onchange="renderTable()">-->
+<!--        <option value="All">All</option>-->
+<!--        <option>Monday</option>-->
+<!--        <option>Tuesday</option>-->
+<!--        <option>Wednesday</option>-->
+<!--        <option>Thursday</option>-->
+<!--        <option>Friday</option>-->
+<!--      </select>-->
+<!--    </div>-->
+
+<!--    <h3>Generated Timetable</h3>-->
+<!--    <table id="timetable">-->
+<!--      <thead>-->
+<!--        <tr>-->
+<!--          <th>Staff Name</th>-->
+<!--          <th>Staff ID</th>-->
+<!--          <th>Subject</th>-->
+<!--          <th>Code</th>-->
+<!--          <th>Day</th>-->
+<!--          <th>Section</th>-->
+<!--          <th>Period</th>-->
+<!--        </tr>-->
+<!--      </thead>-->
+<!--      <tbody></tbody>-->
+<!--    </table>-->
+<!--  </div>-->
+
+<!--  <script>-->
+<!--    const staffList = [];-->
+<!--    const sections = ['A', 'B', 'C'];-->
+<!--    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];-->
+<!--    const periodsPerDay = 8;-->
+<!--    let timetable = [];-->
+<!--    const dp = {};-->
+
+<!--    function addStaff() {-->
+<!--      const name = document.getElementById('staff_name').value;-->
+<!--      const id = document.getElementById('staff_id').value;-->
+<!--      const subject = document.getElementById('subject_name').value;-->
+<!--      const code = document.getElementById('subject_code').value;-->
+<!--      if (!name || !id || !subject || !code) return alert('Fill all fields');-->
+
+<!--      staffList.push({ name, id, subject, code });-->
+<!--      document.getElementById('staffList').innerHTML += `<li>${name} (${id}) - ${subject} (${code})</li>`;-->
+<!--      document.getElementById('filterStaff').innerHTML += `<option value="${name}">${name}</option>`;-->
+<!--      document.getElementById('staff_name').value = '';-->
+<!--      document.getElementById('staff_id').value = '';-->
+<!--      document.getElementById('subject_name').value = '';-->
+<!--      document.getElementById('subject_code').value = '';-->
+<!--    }-->
+
+<!--    function generateTimetable() {-->
+<!--      timetable = [];-->
+<!--      staffList.forEach(s => {-->
+<!--        dp[s.name] = {};-->
+<!--        for (let d of days) {-->
+<!--          dp[s.name][d] = {};-->
+<!--          for (let p = 1; p <= periodsPerDay; p++) {-->
+<!--            dp[s.name][d][p] = false;-->
+<!--          }-->
+<!--        }-->
+<!--      });-->
+
+<!--      let staffIndex = 0;-->
+<!--      for (let d of days) {-->
+<!--        for (let p = 1; p <= periodsPerDay; p++) {-->
+<!--          for (let sec of sections) {-->
+<!--            let attempts = 0;-->
+<!--            while (attempts < staffList.length) {-->
+<!--              let staff = staffList[staffIndex % staffList.length];-->
+<!--              if (!dp[staff.name][d][p]) {-->
+<!--                dp[staff.name][d][p] = true;-->
+<!--                timetable.push({-->
+<!--                  staff_name: staff.name,-->
+<!--                  staff_id: staff.id,-->
+<!--                  subject: staff.subject,-->
+<!--                  code: staff.code,-->
+<!--                  day: d,-->
+<!--                  section: sec,-->
+<!--                  period: p-->
+<!--                });-->
+<!--                staffIndex++;-->
+<!--                break;-->
+<!--              }-->
+<!--              staffIndex++;-->
+<!--              attempts++;-->
+<!--            }-->
+<!--          }-->
+<!--        }-->
+<!--      }-->
+<!--      renderTable();-->
+<!--    }-->
+
+<!--    function renderTable() {-->
+<!--      const fs = document.getElementById('filterSection').value;-->
+<!--      const fst = document.getElementById('filterStaff').value;-->
+<!--      const fp = document.getElementById('filterPeriod').value;-->
+<!--      const fd = document.getElementById('filterDay').value;-->
+
+<!--      const tbody = document.getElementById('timetable').getElementsByTagName('tbody')[0];-->
+<!--      tbody.innerHTML = '';-->
+<!--      for (let row of timetable) {-->
+<!--        if ((fs === 'All' || row.section === fs) &&-->
+<!--            (fst === 'All' || row.staff_name === fst) &&-->
+<!--            (fp === 'All' || row.period == fp) &&-->
+<!--            (fd === 'All' || row.day === fd)) {-->
+<!--          let tr = document.createElement('tr');-->
+<!--          tr.innerHTML = `-->
+<!--            <td>${row.staff_name}</td>-->
+<!--            <td>${row.staff_id}</td>-->
+<!--            <td>${row.subject}</td>-->
+<!--            <td>${row.code}</td>-->
+<!--            <td>${row.day}</td>-->
+<!--            <td>${row.section}</td>-->
+<!--            <td>${row.period}</td>`;-->
+<!--          tbody.appendChild(tr);-->
+<!--        }-->
+<!--      }-->
+<!--    }-->
+<!--  </script>-->
+<!--</body>-->
+<!--</html>-->
